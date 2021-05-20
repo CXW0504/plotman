@@ -1,5 +1,6 @@
 # `plotman`: a Chia plotting manager
  添加了选择足够空间的最终目录，全满了，就停止创建 p盘任务
+ manage.log 是创建p盘任务的日志 在 /opt/chia-temp 目录下
 This is a tool for managing [Chia](https://github.com/Chia-Network/chia-blockchain)
 plotting operations.  The tool runs on the plotting machine and provides
 the following functionality:
