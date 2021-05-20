@@ -25,6 +25,7 @@ formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(messag
 fileHandler.setFormatter(formatter)
 
 logger.addHandler(fileHandler)
+
 class PlotmanArgParser:
     def add_idprefix_arg(self, subparser):
         subparser.add_argument(
