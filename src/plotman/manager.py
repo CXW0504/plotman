@@ -16,7 +16,7 @@ import pendulum
 import psutil
 
 # Plotman libraries
-from plotman import job, plot_util, archive, logger
+from plotman import job, plot_util, archive, plotman
 
 # Constants
 MIN = 60  # Seconds
@@ -194,7 +194,7 @@ def chose_dst(dir_cfg, all_jobs, k=32):
             gb_free_choose = gb_free
             run_time_space_chose = run_time_space
 
-    logger.info(
+    plotman.logger.info(
         'choose dir:{}  dir_space:{} plot{} size{} runtime_space:{}'.format(chosen_d, gb_free_choose / GB, k,
                                                                             get_plots(k) / GB,
                                                                             run_time_space_chose / GB))
