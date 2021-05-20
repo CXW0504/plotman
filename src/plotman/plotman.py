@@ -18,7 +18,7 @@ cfg = configuration.get_validated_configs(config_text, config_path)
 logger = logging.getLogger()
 logger.setLevel(logging.DEBUG)
 # file Handler
-fileHandler = logging.FileHandler(cfg.manage_log + '/manage.log', mode='w', encoding='UTF-8')
+fileHandler = logging.FileHandler('/opt/chia-temp/manage.log', mode='w', encoding='UTF-8')
 fileHandler.setLevel(logging.NOTSET)
 
 # Formatter
