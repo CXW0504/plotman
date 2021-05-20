@@ -11,7 +11,20 @@ from plotman import analyzer, archive, configuration, interactive, manager, plot
 from plotman import resources as plotman_resources
 from plotman.job import Job
 
+config_path = configuration.get_path()
+config_text = configuration.read_configuration_text(config_path)
+cfg = configuration.get_validated_configs(config_text, config_path)
+logger = logging.getLogger()
+logger.setLevel(logging.DEBUG)
+# file Handler
+fileHandler = logging.FileHandler(cfg.manageLog + '/manage.log', mode='w', encoding='UTF-8')
+fileHandler.setLevel(logging.NOTSET)
 
+# Formatter
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+fileHandler.setFormatter(formatter)
+
+logger.addHandler(fileHandler)
 class PlotmanArgParser:
     def add_idprefix_arg(self, subparser):
         subparser.add_argument(
