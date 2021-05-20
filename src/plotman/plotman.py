@@ -5,6 +5,7 @@ import os
 import random
 from shutil import copyfile
 import time
+import logging
 
 # Plotman libraries
 from plotman import analyzer, archive, configuration, interactive, manager, plot_util, reporting
