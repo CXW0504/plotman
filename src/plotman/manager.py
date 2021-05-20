@@ -16,8 +16,7 @@ import pendulum
 import psutil
 
 # Plotman libraries
-import job
-import plot_util
+from plotman import job, plot_util
 from archive import compute_priority
 from plotman import \
     archive, logger  # for get_archdir_freebytes(). TODO: move to avoid import loop
