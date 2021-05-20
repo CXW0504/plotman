@@ -18,8 +18,7 @@ import psutil
 # Plotman libraries
 from plotman import job, plot_util
 from archive import compute_priority
-from plotman import \
-    archive, logger  # for get_archdir_freebytes(). TODO: move to avoid import loop
+from plotman import archive, logger  # for get_archdir_freebytes(). TODO: move to avoid import loop
 
 # Constants
 MIN = 60  # Seconds
