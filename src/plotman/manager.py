@@ -188,7 +188,7 @@ def chose_dst(dir_cfg, all_jobs, k=32):
         gb_free = get_dir_size(d)
         run_time_space = get_dst_run_job_space(all_jobs, d)
         priority = archive.compute_priority(ph, gb_free, 0)
-        if (priority >= best_priority) and 1 - (get_plots(k) <= (gb_free - run_time_space)):
+        if (priority >= best_priority) and (get_plots(k) <= (gb_free - run_time_space)):
             best_priority = priority
             chosen_d = d
             gb_free_choose = gb_free
