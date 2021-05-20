@@ -1,5 +1,5 @@
 # `plotman`: a Chia plotting manager
-
+ 添加了选择足够空间的最终目录，全满了，就停止创建 p盘任务
 This is a tool for managing [Chia](https://github.com/Chia-Network/chia-blockchain)
 plotting operations.  The tool runs on the plotting machine and provides
 the following functionality:
