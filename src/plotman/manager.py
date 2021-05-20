@@ -1,6 +1,9 @@
+import ctypes
 import logging
 import operator
 import os
+import platform
+import encodings
 import random
 import re
 import readline  # For nice CLI
@@ -13,15 +16,19 @@ import pendulum
 import psutil
 
 # Plotman libraries
+import job
+import plot_util
+from archive import compute_priority
 from plotman import \
-    archive  # for get_archdir_freebytes(). TODO: move to avoid import loop
-from plotman import job, plot_util
+    archive, logger  # for get_archdir_freebytes(). TODO: move to avoid import loop
 
 # Constants
-MIN = 60    # Seconds
-HR = 3600   # Seconds
+MIN = 60  # Seconds
+HR = 3600  # Seconds
+GB = 1_000_000_000
 
-MAX_AGE = 1000_000_000   # Arbitrary large number of seconds
+MAX_AGE = 1000_000_000  # Arbitrary large number of seconds
+
 
 def dstdirs_to_furthest_phase(all_jobs):
     '''Return a map from dst dir to a phase tuple for the most progressed job
@@ -31,6 +38,7 @@ def dstdirs_to_furthest_phase(all_jobs):
         if not j.dstdir in result.keys() or result[j.dstdir] < j.progress():
             result[j.dstdir] = j.progress()
     return result
+
 
 def dstdirs_to_youngest_phase(all_jobs):
     '''Return a map from dst dir to a phase tuple for the least progressed job
@@ -42,6 +50,7 @@ def dstdirs_to_youngest_phase(all_jobs):
         if not j.dstdir in result.keys() or result[j.dstdir] > j.progress():
             result[j.dstdir] = j.progress()
     return result
+
 
 def phases_permit_new_job(phases, d, sched_cfg, dir_cfg):
     '''Scheduling logic: return True if it's OK to start a new job on a tmp dir
@@ -72,6 +81,7 @@ def phases_permit_new_job(phases, d, sched_cfg, dir_cfg):
 
     return True
 
+
 def maybe_start_new_plot(dir_cfg, sched_cfg, plotting_cfg):
     jobs = job.Job.get_running_jobs(dir_cfg.log)
 
@@ -85,38 +95,35 @@ def maybe_start_new_plot(dir_cfg, sched_cfg, plotting_cfg):
         wait_reason = 'max jobs (%d) - (%ds/%ds)' % (sched_cfg.global_max_jobs, youngest_job_age, global_stagger)
     else:
         tmp_to_all_phases = [(d, job.job_phases_for_tmpdir(d, jobs)) for d in dir_cfg.tmp]
-        eligible = [ (d, phases) for (d, phases) in tmp_to_all_phases
-                if phases_permit_new_job(phases, d, sched_cfg, dir_cfg) ]
-        rankable = [ (d, phases[0]) if phases else (d, job.Phase(known=False))
-                for (d, phases) in eligible ]
-        
+        eligible = [(d, phases) for (d, phases) in tmp_to_all_phases
+                    if phases_permit_new_job(phases, d, sched_cfg, dir_cfg)]
+        rankable = [(d, phases[0]) if phases else (d, job.Phase(known=False))
+                    for (d, phases) in eligible]
+
         if not eligible:
             wait_reason = 'no eligible tempdirs (%ds/%ds)' % (youngest_job_age, global_stagger)
         else:
             # Plot to oldest tmpdir.
             tmpdir = max(rankable, key=operator.itemgetter(1))[0]
-
-            # Select the dst dir least recently selected
-            dir2ph = { d:ph for (d, ph) in dstdirs_to_youngest_phase(jobs).items()
-                      if d in dir_cfg.dst and ph is not None}
-            unused_dirs = [d for d in dir_cfg.dst if d not in dir2ph.keys()]
-            dstdir = ''
-            if unused_dirs: 
-                dstdir = random.choice(unused_dirs)
-            else:
-                dstdir = max(dir2ph, key=dir2ph.get)
+            re, dstdir = plot_util.chose_dst(dir_cfg, jobs)
+            if not re:
+                return (False, 'no space in dist');
 
             logfile = os.path.join(
                 dir_cfg.log, pendulum.now().isoformat(timespec='microseconds').replace(':', '_') + '.log'
             )
-
-            plot_args = ['chia', 'plots', 'create',
-                    '-k', str(plotting_cfg.k),
-                    '-r', str(plotting_cfg.n_threads),
-                    '-u', str(plotting_cfg.n_buckets),
-                    '-b', str(plotting_cfg.job_buffer),
-                    '-t', tmpdir,
-                    '-d', dstdir ]
+            path = plot_util.get_root()
+            if platform.system() == 'Windows':
+                path = path + 'daemon\\chia.exe'
+            else:
+                path = path + 'chia'
+            plot_args = [path, 'plots', 'create',
+                         '-k', str(plotting_cfg.k),
+                         '-r', str(plotting_cfg.n_threads),
+                         '-u', str(plotting_cfg.n_buckets),
+                         '-b', str(plotting_cfg.job_buffer),
+                         '-t', tmpdir,
+                         '-d', dstdir]
             if plotting_cfg.e:
                 plot_args.append('-e')
             if plotting_cfg.farmer_pk is not None:
@@ -161,14 +168,15 @@ def maybe_start_new_plot(dir_cfg, sched_cfg, plotting_cfg):
             with open_log_file:
                 # start_new_sessions to make the job independent of this controlling tty.
                 p = subprocess.Popen(plot_args,
-                    stdout=open_log_file,
-                    stderr=subprocess.STDOUT,
-                    start_new_session=True)
+                                     stdout=open_log_file,
+                                     stderr=subprocess.STDOUT,
+                                     start_new_session=True)
 
             psutil.Process(p.pid).nice(15)
             return (True, logmsg)
 
     return (False, wait_reason)
+
 
 def select_jobs_by_partial_id(jobs, partial_id):
     selected = []
@@ -176,3 +184,61 @@ def select_jobs_by_partial_id(jobs, partial_id):
         if j.plot_id.startswith(partial_id):
             selected.append(j)
     return selected
+
+
+def chose_dst(dir_cfg, all_jobs, k=32):
+    dir2ph = dstdirs_to_furthest_phase(all_jobs)
+    best_priority = -100000000
+    chosen_d = None
+    gb_free_choose = 0
+    run_time_space_chose = 0
+    for d in dir_cfg.dst:
+        ph = dir2ph.get(d, job.Phase(0, 0))
+        gb_free = get_dir_size(d)
+        run_time_space = get_dst_run_job_space(all_jobs, d)
+        priority = compute_priority(ph, gb_free, 0)
+        if (priority >= best_priority) and 1 - (get_plots(k) <= (gb_free - run_time_space)):
+            best_priority = priority
+            chosen_d = d
+            gb_free_choose = gb_free
+            run_time_space_chose = run_time_space
+
+    logger.info(
+        'choose dir:{}  dir_space:{} plot{} size{} runtime_space:{}'.format(chosen_d, gb_free_choose / GB, k,
+                                                                            get_plots(k) / GB,
+                                                                            run_time_space_chose / GB))
+
+    if not chosen_d:
+        return False, 'No space found'
+    else:
+        return True, chosen_d
+
+
+def get_dir_size(folder):
+    if platform.system() == 'Windows':
+        free_bytes = ctypes.c_ulonglong(0)
+        ctypes.windll.kernel32.GetDiskFreeSpaceExW(ctypes.c_wchar_p(folder), None, None, ctypes.pointer(free_bytes))
+        return (free_bytes.value / 1024 / 1024 // 1024) * GB
+    else:
+        st = os.statvfs(folder)
+        return (st.f_bavail * st.f_frsize / 1024 / 1024 // 1024) * GB
+
+
+def get_plots(k=32):
+    if k == 32:
+        return 109 * GB
+    elif k == 33:
+        return 211 * GB
+    elif k == 34:
+        return 441 * GB
+    elif k == 35:
+        return 901 * GB
+    raise Exception('k参数不正确')
+
+
+def get_dst_run_job_space(jobs, dir):
+    size = 0
+    for job1 in jobs:
+        if job1.dstdir == dir:
+            size += get_plots(job1.k)
+    return size
