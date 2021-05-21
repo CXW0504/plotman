@@ -5,6 +5,7 @@ import os
 import random
 from shutil import copyfile
 import time
+import logging
 
 # Plotman libraries
 from plotman import analyzer, archive, configuration, interactive, manager, plot_util, reporting
@@ -17,7 +18,7 @@ cfg = configuration.get_validated_configs(config_text, config_path)
 logger = logging.getLogger()
 logger.setLevel(logging.DEBUG)
 # file Handler
-fileHandler = logging.FileHandler(cfg.manageLog + '/manage.log', mode='w', encoding='UTF-8')
+fileHandler = logging.FileHandler('/opt/chia-temp/manage.log', mode='w', encoding='UTF-8')
 fileHandler.setLevel(logging.NOTSET)
 
 # Formatter

@@ -16,9 +16,7 @@ import pendulum
 import psutil
 
 # Plotman libraries
-from plotman import job, plot_util
-from archive import compute_priority
-from plotman import archive, logger  # for get_archdir_freebytes(). TODO: move to avoid import loop
+from plotman import job, plot_util, archive, plotman
 
 # Constants
 MIN = 60  # Seconds
@@ -103,19 +101,14 @@ def maybe_start_new_plot(dir_cfg, sched_cfg, plotting_cfg):
         else:
             # Plot to oldest tmpdir.
             tmpdir = max(rankable, key=operator.itemgetter(1))[0]
-            re, dstdir = plot_util.chose_dst(dir_cfg, jobs)
+            re, dstdir = chose_dst(dir_cfg, jobs)
             if not re:
                 return (False, 'no space in dist');
 
             logfile = os.path.join(
                 dir_cfg.log, pendulum.now().isoformat(timespec='microseconds').replace(':', '_') + '.log'
             )
-            path = plot_util.get_root()
-            if platform.system() == 'Windows':
-                path = path + 'daemon\\chia.exe'
-            else:
-                path = path + 'chia'
-            plot_args = [path, 'plots', 'create',
+            plot_args = ['chia', 'plots', 'create',
                          '-k', str(plotting_cfg.k),
                          '-r', str(plotting_cfg.n_threads),
                          '-u', str(plotting_cfg.n_buckets),
@@ -194,14 +187,14 @@ def chose_dst(dir_cfg, all_jobs, k=32):
         ph = dir2ph.get(d, job.Phase(0, 0))
         gb_free = get_dir_size(d)
         run_time_space = get_dst_run_job_space(all_jobs, d)
-        priority = compute_priority(ph, gb_free, 0)
-        if (priority >= best_priority) and 1 - (get_plots(k) <= (gb_free - run_time_space)):
+        priority = archive.compute_priority(ph, gb_free, 0)
+        if (priority >= best_priority) and (get_plots(k) <= (gb_free - run_time_space)):
             best_priority = priority
             chosen_d = d
             gb_free_choose = gb_free
             run_time_space_chose = run_time_space
 
-    logger.info(
+    plotman.logger.info(
         'choose dir:{}  dir_space:{} plot{} size{} runtime_space:{}'.format(chosen_d, gb_free_choose / GB, k,
                                                                             get_plots(k) / GB,
                                                                             run_time_space_chose / GB))
