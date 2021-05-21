@@ -187,7 +187,7 @@ def chose_dst(dir_cfg, all_jobs, k=32):
         ph = dir2ph.get(d, job.Phase(0, 0))
         gb_free = get_dir_size(d)
         run_time_space = get_dst_run_job_space(all_jobs, d)
-        priority = archive.compute_priority(ph, gb_free, 0)
+        priority = compute_priority(ph, gb_free, run_time_space)
         if (priority >= best_priority) and (get_plots(k) <= (gb_free - run_time_space)):
             best_priority = priority
             chosen_d = d
@@ -233,3 +233,34 @@ def get_dst_run_job_space(jobs, dir):
         if job1.dstdir == dir:
             size += get_plots(job1.k)
     return size
+def compute_priority(phase, gb_free, run_time_space):
+    # All these values are designed around dst buffer dirs of about
+    # ~2TB size and containing k32 plots.  TODO: Generalize, and
+    # rewrite as a sort function.
+
+    priority = 50
+
+    # To avoid concurrent IO, we should not touch drives that
+    # are about to receive a new plot.  If we don't know the phase,
+    # ignore.
+    if (phase.known):
+        if (phase == job.Phase(3, 4)):
+            priority -= 4
+        elif (phase == job.Phase(3, 5)):
+            priority -= 8
+        elif (phase == job.Phase(3, 6)):
+            priority -= 16
+        elif (phase >= job.Phase(3, 7)):
+            priority -= 32
+
+    # If a drive is getting full, we should prioritize it
+    if (gb_free < 1000):
+        priority -= 1 + int((1000 - gb_free) / 100)
+    if (gb_free < 500):
+        priority -= 1 + int((500 - gb_free) / 100)
+
+    # Finally, least importantly, pick drives with more plots
+    # over those with fewer.
+    priority -= run_time_space
+
+    return priority
