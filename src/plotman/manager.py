@@ -164,9 +164,9 @@ def maybe_start_new_plot(dir_cfg, sched_cfg, plotting_cfg):
                                      start_new_session=True)
 
             psutil.Process(p.pid).nice(15)
-            return (True, logmsg)
-
-    return (False, wait_reason)
+            return True, logmsg
+    plotman.logger.info(wait_reason)
+    return False, wait_reason
 
 
 def select_jobs_by_partial_id(jobs, partial_id):
@@ -258,6 +258,6 @@ def compute_priority(phase, gb_free, run_time_space, num):
             priority -= 32
     # Finally, least importantly, pick drives with more plots
     # over those with fewer.
-    priority = priority - (run_time_space // num)
+    priority = priority - (run_time_space / num)
 
     return priority
