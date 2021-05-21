@@ -258,6 +258,6 @@ def compute_priority(phase, gb_free, run_time_space, num):
             priority -= 32
     # Finally, least importantly, pick drives with more plots
     # over those with fewer.
-    priority = priority - (run_time_space / num)
+    priority = priority - (run_time_space / (num+1))
 
     return priority
