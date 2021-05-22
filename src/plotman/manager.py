@@ -184,11 +184,14 @@ def chose_dst(dir_cfg, all_jobs, k=32):
     gb_free_choose = 0
     run_time_space_chose = 0
     for d in dir_cfg.dst:
+
         ph = dir2ph.get(d, job.Phase(0, 0))
         gb_free = get_dir_size(d)
         run_time_space, num = get_dst_run_job_space(all_jobs, d)
+        if get_plots(k) > (gb_free - run_time_space):
+            continue
         priority = compute_priority(ph, gb_free, run_time_space, num)
-        if (priority >= best_priority) and (get_plots(k) <= (gb_free - run_time_space)):
+        if (priority >= best_priority):
             best_priority = priority
             chosen_d = d
             gb_free_choose = gb_free
@@ -258,6 +261,6 @@ def compute_priority(phase, gb_free, run_time_space, num):
             priority -= 32
     # Finally, least importantly, pick drives with more plots
     # over those with fewer.
-    priority = priority - (run_time_space / (num+1))
+    priority = priority - (run_time_space / (num + 1))
 
     return priority
