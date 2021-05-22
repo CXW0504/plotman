@@ -189,6 +189,7 @@ def chose_dst(dir_cfg, all_jobs, k=32):
         gb_free = get_dir_size(d)
         run_time_space, num = get_dst_run_job_space(all_jobs, d)
         if get_plots(k) > (gb_free - run_time_space):
+            plotman.logger.info('dir:{} space no enough'.format(d))
             continue
         priority = compute_priority(ph, gb_free, run_time_space, num)
         if (priority >= best_priority):
