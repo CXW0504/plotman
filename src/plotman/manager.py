@@ -104,6 +104,7 @@ def maybe_start_new_plot(dir_cfg, sched_cfg, plotting_cfg):
             now = int(round(time.time()*1000))
             now02 = time.strftime('%Y-%m-%d-%H:%M:%S', time.localtime(now/1000))
             tmpdir = tmpdir + os.sep + now02
+            os.makedirs(tmpdir.decode('utf-8'))
             re, dstdir = chose_dst(dir_cfg, jobs)
             if not re:
                 return (False, 'no space in dist');
@@ -182,7 +183,7 @@ def select_jobs_by_partial_id(jobs, partial_id):
 
 def chose_dst(dir_cfg, all_jobs, k=32):
     dir2ph = dstdirs_to_furthest_phase(all_jobs)
-    best_priority = None
+    best_priority = -1000000
     chosen_d = None
     gb_free_choose = 0
     run_time_space_chose = 0
