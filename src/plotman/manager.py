@@ -101,6 +101,9 @@ def maybe_start_new_plot(dir_cfg, sched_cfg, plotting_cfg):
         else:
             # Plot to oldest tmpdir.
             tmpdir = max(rankable, key=operator.itemgetter(1))[0]
+            now = int(round(time.time()*1000))
+            now02 = time.strftime('%Y-%m-%d-%H:%M:%S', time.localtime(now/1000))
+            tmpdir = tmpdir + os.sep + now02
             re, dstdir = chose_dst(dir_cfg, jobs)
             if not re:
                 return (False, 'no space in dist');
@@ -179,7 +182,7 @@ def select_jobs_by_partial_id(jobs, partial_id):
 
 def chose_dst(dir_cfg, all_jobs, k=32):
     dir2ph = dstdirs_to_furthest_phase(all_jobs)
-    best_priority = -1000000000000000
+    best_priority = None
     chosen_d = None
     gb_free_choose = 0
     run_time_space_chose = 0
@@ -192,7 +195,7 @@ def chose_dst(dir_cfg, all_jobs, k=32):
             plotman.logger.info('dir:{} space no enough'.format(d))
             continue
         priority = compute_priority(ph, gb_free, run_time_space, num)
-        if (priority >= best_priority):
+        if priority >= best_priority:
             best_priority = priority
             chosen_d = d
             gb_free_choose = gb_free
