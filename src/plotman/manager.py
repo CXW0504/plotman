@@ -101,10 +101,6 @@ def maybe_start_new_plot(dir_cfg, sched_cfg, plotting_cfg):
         else:
             # Plot to oldest tmpdir.
             tmpdir = max(rankable, key=operator.itemgetter(1))[0]
-            now = int(round(time.time()*1000))
-            now02 = time.strftime('%Y-%m-%d-%H:%M:%S', time.localtime(now/1000))
-            tmpdir = tmpdir + os.sep + now02
-            os.makedirs(tmpdir.decode('utf-8'))
             re, dstdir = chose_dst(dir_cfg, jobs)
             if not re:
                 return (False, 'no space in dist');
