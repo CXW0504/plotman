@@ -179,7 +179,7 @@ def select_jobs_by_partial_id(jobs, partial_id):
 
 def chose_dst(dir_cfg, all_jobs, k=32):
     dir2ph = dstdirs_to_furthest_phase(all_jobs)
-    best_priority = -1000000
+    best_priority = -100000000
     chosen_d = None
     gb_free_choose = 0
     run_time_space_chose = 0
@@ -246,7 +246,7 @@ def compute_priority(phase, gb_free, run_time_space, num):
     # ~2TB size and containing k32 plots.  TODO: Generalize, and
     # rewrite as a sort function.
 
-    priority = 500
+    priority = 5000
 
     # To avoid concurrent IO, we should not touch drives that
     # are about to receive a new plot.  If we don't know the phase,
@@ -262,6 +262,6 @@ def compute_priority(phase, gb_free, run_time_space, num):
             priority -= 32
     # Finally, least importantly, pick drives with more plots
     # over those with fewer.
-    priority = priority - (run_time_space / (num + 1))
+    priority = priority - (run_time_space/GB / (num + 1))
 
     return priority
